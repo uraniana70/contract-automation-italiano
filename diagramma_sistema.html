@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Automazione Contratti — Play Entertainment</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0E0F1A;
+    --surface:  #161728;
+    --grid:     #1c1e32;
+    --border:   #2a2d4a;
+    --red:      #E94560;
+    --gold:     #F5A623;
+    --blue:     #4A90D9;
+    --green:    #27AE60;
+    --purple:   #9B59B6;
+    --teal:     #00B4D8;
+    --white:    #F0F2FF;
+    --muted:    #6B7280;
+    --font:     'DM Sans', sans-serif;
+    --mono:     'DM Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--white);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(14,15,26,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px; height: 56px;
+  }
+  .header-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.06em;
+    color: var(--white); text-transform: uppercase;
+  }
+  .header-logo span { color: var(--red); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1; transform:scale(1);} 50%{opacity:.5; transform:scale(1.3);} }
+
+  .header-title {
+    font-size: 13px; color: var(--muted); font-weight: 400;
+    font-family: var(--mono); letter-spacing: 0.03em;
+  }
+  .header-badge {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    color: var(--gold); background: rgba(245,166,35,.12);
+    border: 1px solid rgba(245,166,35,.3);
+    padding: 4px 12px; border-radius: 20px; text-transform: uppercase;
+  }
+
+  /* ── CANVAS ── */
+  .canvas-wrap {
+    margin-top: 56px;
+    position: relative; min-height: calc(100vh - 56px);
+    padding: 60px 48px 80px;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(233,69,96,.06) 0%, transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(74,144,217,.06) 0%, transparent 40%);
+  }
+
+  /* dot grid */
+  .canvas-wrap::before {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background-image: radial-gradient(circle, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  /* ── FLOW LAYOUT ── */
+  .flow {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 0; position: relative; z-index: 1;
+    max-width: 900px; margin: 0 auto;
+  }
+
+  /* ── NODE ── */
+  .node {
+    width: 100%; max-width: 560px;
+    position: relative;
+    opacity: 0; transform: translateY(24px);
+    animation: nodeIn .5s ease forwards;
+  }
+
+  @keyframes nodeIn {
+    to { opacity:1; transform:translateY(0); }
+  }
+
+  .node:nth-child(1)  { animation-delay: .05s; }
+  .node:nth-child(2)  { animation-delay: .15s; }
+  .node:nth-child(3)  { animation-delay: .25s; }
+  .node:nth-child(4)  { animation-delay: .35s; }
+  .node:nth-child(5)  { animation-delay: .45s; }
+  .node:nth-child(6)  { animation-delay: .55s; }
+  .node:nth-child(7)  { animation-delay: .65s; }
+  .node:nth-child(8)  { animation-delay: .75s; }
+
+  .node-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    cursor: pointer;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    position: relative; overflow: hidden;
+  }
+  .node-card::before {
+    content:''; position:absolute; inset:0; border-radius:16px;
+    background: linear-gradient(135deg, rgba(255,255,255,.03), transparent);
+    pointer-events:none;
+  }
+  .node-card:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 16px 48px rgba(0,0,0,.4);
+  }
+
+  /* accent left border */
+  .node-card .accent {
+    position: absolute; left: 0; top: 12px; bottom: 12px;
+    width: 4px; border-radius: 0 4px 4px 0;
+  }
+
+  .node-inner {
+    display: flex; align-items: center; gap: 18px; padding-left: 12px;
+  }
+
+  .node-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0;
+    position: relative;
+  }
+  .node-icon::after {
+    content:''; position:absolute; inset:0; border-radius:14px;
+    background: rgba(255,255,255,.06);
+  }
+
+  .node-body { flex: 1; min-width: 0; }
+  .node-step {
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .node-title {
+    font-size: 16px; font-weight: 700; color: var(--white);
+    line-height: 1.2; margin-bottom: 4px;
+  }
+  .node-desc {
+    font-size: 12px; color: var(--muted); line-height: 1.4;
+  }
+
+  .node-badge {
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    padding: 4px 10px; border-radius: 20px; white-space: nowrap;
+    letter-spacing: .04em;
+  }
+
+  /* ── TAGS inside expanded ── */
+  .node-tags {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 12px; padding-left: 12px;
+    max-height: 0; overflow: hidden;
+    transition: max-height .35s ease, opacity .3s ease;
+    opacity: 0;
+  }
+  .node-card.open .node-tags { max-height: 120px; opacity: 1; }
+  .node-card.open { border-color: rgba(255,255,255,.15); }
+
+  .tag {
+    font-size: 11px; padding: 3px 10px; border-radius: 20px;
+    background: rgba(255,255,255,.06); color: var(--muted); border: 1px solid var(--border);
+  }
+
+  /* ── CONNECTOR ── */
+  .connector {
+    display: flex; flex-direction: column; align-items: center;
+    height: 52px; position: relative;
+    opacity: 0; animation: fadeIn .4s ease forwards;
+  }
+  .connector:nth-child(2)  { animation-delay: .10s; }
+  .connector:nth-child(4)  { animation-delay: .20s; }
+  .connector:nth-child(6)  { animation-delay: .30s; }
+  .connector:nth-child(8)  { animation-delay: .40s; }
+  .connector:nth-child(10) { animation-delay: .50s; }
+  .connector:nth-child(12) { animation-delay: .60s; }
+  .connector:nth-child(14) { animation-delay: .70s; }
+
+  @keyframes fadeIn { to { opacity:1; } }
+
+  .connector-line {
+    width: 2px; flex: 1;
+    background: linear-gradient(to bottom, var(--line-color, var(--border)), transparent);
+    position: relative;
+  }
+  /* animated dash flowing down */
+  .connector-line::after {
+    content:''; position:absolute;
+    width: 2px; height: 14px; top: -14px;
+    background: var(--line-color, var(--gold));
+    border-radius: 2px;
+    animation: flowDown 1.6s ease-in-out infinite;
+    animation-delay: var(--delay, 0s);
+  }
+  @keyframes flowDown {
+    0%   { top:-14px; opacity:0; }
+    10%  { opacity:1; }
+    90%  { opacity:1; }
+    100% { top:calc(100% + 14px); opacity:0; }
+  }
+
+  .connector-arrow {
+    width: 0; height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 10px solid var(--line-color, var(--border));
+  }
+
+  .connector-label {
+    position: absolute; right: calc(50% + 16px); top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px; font-family: var(--mono); color: var(--muted);
+    white-space: nowrap; letter-spacing: .06em;
+  }
+
+  /* ── SIDE PANELS ── */
+  .side-panel {
+    position: absolute; right: 48px; top: 60px;
+    width: 220px; display: flex; flex-direction: column; gap: 12px;
+    opacity: 0; animation: fadeIn .6s .9s ease forwards;
+  }
+
+  .panel-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px;
+  }
+  .panel-card h4 {
+    font-size: 10px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--muted); margin-bottom: 6px;
+  }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink:0;
+  }
+
+  .stat-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 6px 0; border-bottom: 1px solid var(--border);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { font-size: 11px; color: var(--muted); }
+  .stat-val { font-family: var(--mono); font-size: 14px; font-weight: 600; }
+
+  /* ── HINT ── */
+  .hint {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    font-size: 12px; color: var(--muted); font-family: var(--mono);
+    background: rgba(22,23,40,.8); border: 1px solid var(--border);
+    padding: 8px 18px; border-radius: 20px;
+    backdrop-filter: blur(8px);
+    animation: fadeIn 1s 1.4s ease both;
+  }
+
+  /* ── TOOLTIP ── */
+  .tooltip {
+    position: fixed; z-index: 200;
+    background: #1c1e32; border: 1px solid rgba(255,255,255,.12);
+    border-radius: 10px; padding: 12px 16px;
+    font-size: 12px; color: var(--muted); max-width: 240px;
+    pointer-events: none; opacity: 0; transition: opacity .15s ease;
+    box-shadow: 0 12px 32px rgba(0,0,0,.5);
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip strong { color: var(--white); display: block; margin-bottom: 4px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-logo">
+    <div class="dot"></div>
+    <span>Play</span> Entertainment SRL
+  </div>
+  <div class="header-title">sistema_automazione_contratti.flow</div>
+  <div class="header-badge">v1.0 · 2026</div>
+</header>
+
+<!-- SIDE PANEL -->
+<div class="side-panel">
+  <div class="panel-card">
+    <h4>Legenda fasi</h4>
+    <div class="legend-item"><div class="legend-dot" style="background:#4A90D9"></div>Raccolta dati</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#27AE60"></div>Elaborazione</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#E94560"></div>Automazione AI</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#F5A623"></div>Output</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#9B59B6"></div>Archiviazione</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#00B4D8"></div>Distribuzione</div>
+  </div>
+  <div class="panel-card">
+    <h4>Statistiche sistema</h4>
+    <div class="stat-row">
+      <span class="stat-label">Contratti generati</span>
+      <span class="stat-val" style="color:var(--red)">22+</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Tempo generazione</span>
+      <span class="stat-val" style="color:var(--green)">&lt; 5′</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Errori evitati</span>
+      <span class="stat-val" style="color:var(--gold)">→ 0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Ore risparmiate</span>
+      <span class="stat-val" style="color:var(--blue)">24h</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN FLOW -->
+<div class="canvas-wrap">
+  <div class="flow">
+
+    <!-- 1 -->
+    <div class="node">
+      <div class="node-card"
+           style="border-color: rgba(74,144,217,.35);"
+           data-tip="Raccolta dati tramite form fisico o digitale. Ogni membro troupe fornisce: nome, CF, ENPALS, ruolo, livello CCNL, contatti."
+           data-title="Raccolta Dati Troupe">
+        <div class="accent" style="background:#4A90D9;"></div>
+        <div class="node-inner">
+          <div class="node-icon" style="background:rgba(74,144,217,.15);">📋</div>
+          <div class="node-body">
+            <div class="node-step">Step 01</div>
+            <div class="node-title">Raccolta Dati Troupe</div>
+            <div class="node-desc">Form anagrafico per ogni membro — nome, CF, ENPALS, ruolo, livello CCNL</div>
+          </div>
+          <div class="node-badge" style="background:rgba(74,144,217,.12);color:#4A90D9;border:1px solid rgba(74,144,217,.3);">INPUT</div>
+        </div>
+        <div class="node-tags">
+          <span class="tag">Nome / Cognome</span>
+          <span class="tag">Codice Fiscale</span>
+          <span class="tag">ENPALS</span>
+          <span class="tag">Data nascita</span>
+          <span class="tag">Residenza</span>
+          <span class="tag">Ruolo produzione</span>
+          <span class="tag">Email / Tel</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector" style="--line-color:#4A90D9; --delay:.0s;">
+      <div class="connector-line"></div>
+      <div class="connector-arrow"></div>
+      <div class="connector-label">dati grezzi</div>
+    </div>
+
+    <!-- 2 -->
+    <div class="node">
+      <div class="node-card"
+           style="border-color: rgba(74,144,217,.35);"
+           data-tip="Il foglio Excel strutturato (Specchietto UFB) è la fonte univoca di verità. 80+ membri, color-coding per reparto, 3 fogli: Anagrafica, Turni, Template."
+           data-title="Troupe Data Sheet">
+        <div class="accent" style="background:#4A90D9;"></div>
+        <div class="node-inner">
+          <div class="node-icon" style="background:rgba(74,144,217,.15);">📊</div>
+          <div class="node-body">
+            <div class="node-step">Step 02</div>
+            <div class="node-title">Troupe Data Sheet</div>
+            <div class="node-desc">Excel strutturato · Specchietto UFB · fonte univoca per tutta la troupe</div>
+          </div>
+          <div class="node-badge" style="background:rgba(74,144,217,.12);color:#4A90D9;border:1px solid rgba(74,144,217,.3);">Excel</div>
+        </div>
+        <div class="node-tags">
+          <span class="tag">80+ membri</span>
+          <span class="tag">Foglio Anagrafica</span>
+          <span class="tag">Foglio Turni</span>
+          <span class="tag">Foglio Template</span>
+          <span class="tag">Color-coding reparti</span>
+          <span class="tag">Filtri & ordinamento</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector" style="--line-color:#27AE60; --delay:.2s;">
+      <div class="connector-line"></div>
+      <div class="connector-arrow"></div>
+      <div class="connector-label">strutturati</div>
+    </div>
+
+    <!-- 3 -->
+    <div class="node">
+      <div class="node-card"
+           style="border-color: rgba(39,174,96,.35);"
+           data-tip="Controllo automatico dei dati: CF valido, ENPALS presente, date corrette, livelli CCNL nel range 1–7 / 6A / 6B. Errori segnalati prima della generazione."
+           data-title="Validazione Dati">
+        <div class="accent" style="background:#27AE60;"></div>
+        <div class="node-inner">
+          <div class="node-icon" style="background:rgba(39,174,96,.15);">✅</div>
+          <div class="node-body">
+            <div class="node-step">Step 03</div>
+            <div class="node-title">Validazione Dati</div>
+            <div class="node-desc">Controllo CF, ENPALS, livelli CCNL, date — errori segnalati prima della generazione</div>
+          </div>
+          <div class="node-badge" style="background:rgba(39,174,96,.12);color:#27AE60;border:1px solid rgba(39,174,96,.3);">CHECK</div>
+        </div>
+        <div class="node-tags">
+          <span class="tag">Verifica CF</span>
+          <span class="tag">Livelli CCNL 1–7</span>
+          <span class="tag">Date coerenti</span>
+          <span class="tag">ENPALS presente</span>
+          <span class="tag">Report errori</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector" style="--line-color:#27AE60; --delay:.4s;">
+      <div class="connector-line"></div>
+      <div class="connector-arrow"></div>
+      <div class="connector-label">validati</div>
+    </div>
+
+    <!-- 4 -->
+    <div class="node">
+      <div class="node-card"
+           style="border-color: rgba(39,174,96,.35);"
+           data-tip="Template master del contratto con segnaposto dinamici. Struttura CCNL ANICA 07.12.1999, Art. 1–17, clausole COVID, D.Lgs.81, GDPR, Art.1341-1342 c.c."
+           data-title="Template Contratto">
+        <div class="accent" style="background:#27AE60;"></div>
+        <div class="node-inner">
+          <div class="node-icon" style="background:rgba(39,174,96,.15);">📝</div>
+          <div class="node-body">
+            <div class="node-step">Step 04</div>
+            <div class="node-title">Template Contratto</div>
+            <div class="node-desc">Struttura CCNL ANICA · Art. 1–17 · clausole legali · segnaposto dinamici</div>
+          </div>
+          <div class="node-badge" style="background:rgba(39,174,96,.12);color:#27AE60;border:1px solid rgba(39,174,96,.3);">.docx</div>
+        </div>
+        <div class="node-tags">
+          <span class="tag">CCNL ANICA 07.12.99</span>
+          <span class="tag">Art. 1–17</span>
+          <span class="tag">Clausola COVID</span>
+          <span class="tag">D.Lgs. 81/2008</span>
+          <span class="tag">GDPR</span>
+          <span class="tag">Art. 1341-1342 c.c.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector" style="--line-color:#E94560; --delay:.6s;">
+      <div class="connector-line"></div>
+      <div class="connector-arrow"></div>
+      <div class="connector-label">merge</div>
+    </div>
+
+    <!-- 5 — AI ENGINE (large) -->
+    <div class="node">
+      <div class="node-card"
+           style="border-color: rgba(233,69,96,.5); background: linear-gradient(135deg, #1e0f18, #161728);"
+           data-tip="Il cuore del sistema. Script Node.js che legge ogni riga Excel e la fonde con il template. Genera tutti i contratti in batch con nominazione automatica."
+           data-title="AI / Automation Engine">
+        <div class="accent" style="background: linear-gradient(to bottom, #E94560, #F5A623);"></div>
+        <div class="node-inner">
+          <div class="node-icon" style="background:rgba(233,69,96,.2); font-size:28px;">⚡</div>
+          <div class="node-body">
+            <div class="node-step">Step 05 · CORE</div>
+            <div class="node-title" style="font-size:20px; color:#E94560;">AI / Automation Engine</div>
+            <div class="node-desc">Script Node.js · lettura Excel · merge con template · generazione batch nominata automaticamente</div>
+          </div>
+          <div class="node-badge" style="background:rgba(233,69,96,.15);color:#E94560;border:1px solid rgba(233,69,96,.4);font-size:11px;">NODE.JS</div>
+        </div>
+        <div class="node-tags">
+          <span class="tag">genera_contratti.js</span>
+          <span class="tag">lettura .xlsx</span>
+          <span class="tag">template merge</span>
+          <span class="tag">batch processing</span>
+          <span class="tag">nominazione auto</span>
+          <span class="tag">22 file in &lt; 5s</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector" style="--line-color:#F5A623; --delay:.8s;">
+      <div class="connector-line"></div>
+      <div class="connector-arrow"></div>
+      <div class="connector-label">output</div>
+    </div>
+
+    <!-- 6 -->
+    <div class="node">
+      <div class="node-card"
+           style="border-color: rgba(245,166,35,.35);"
+           data-tip="Produzione dei file .docx individuali. Un file per ogni membro, nominato automaticamente (es. Contratto_GAETA_CLAUDIO.docx). Pronti per revisione e firma."
+           data-title="Generazione Contratti">
+        <div class="accent" style="background:#F5A623;"></div>
+        <div class="node-inner">
+          <div class="node-icon" style="background:rgba(245,166,35,.15);">📄</div>
+          <div class="node-body">
+            <div class="node-step">Step 06</div>
+            <div class="node-title">Generazione Contratti</div>
+            <div class="node-desc">Un .docx per ogni membro · nominazione automatica · 22+ contratti già generati</div>
+          </div>
+          <div class="node-badge" style="background:rgba(245,166,35,.12);color:#F5A623;border:1px solid rgba(245,166,35,.3);">22+ file</div>
+        </div>
+        <div class="node-tags">
+          <span class="tag">Contratto_NOME.docx</span>
+          <span class="tag">dati reali inseriti</span>
+          <span class="tag">revisione manuale</span>
+          <span class="tag">compenso da inserire</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector" style="--line-color:#9B59B6; --delay:1s;">
+      <div class="connector-line"></div>
+      <div class="connector-arrow"></div>
+      <div class="connector-label">salvataggio</div>
+    </div>
+
+    <!-- 7 -->
+    <div class="node">
+      <div class="node-card"
+           style="border-color: rgba(155,89,182,.35);"
+           data-tip="I contratti vengono salvati in una cartella strutturata (locale o cloud). Integrazione Google Drive / OneDrive disponibile nel pacchetto Professional."
+           data-title="Archiviazione">
+        <div class="accent" style="background:#9B59B6;"></div>
+        <div class="node-inner">
+          <div class="node-icon" style="background:rgba(155,89,182,.15);">🗄️</div>
+          <div class="node-body">
+            <div class="node-step">Step 07</div>
+            <div class="node-title">Archiviazione</div>
+            <div class="node-desc">Cartella strutturata locale · Google Drive / OneDrive · organizzazione per produzione</div>
+          </div>
+          <div class="node-badge" style="background:rgba(155,89,182,.12);color:#9B59B6;border:1px solid rgba(155,89,182,.3);">CLOUD</div>
+        </div>
+        <div class="node-tags">
+          <span class="tag">cartella /contratti</span>
+          <span class="tag">Google Drive</span>
+          <span class="tag">OneDrive</span>
+          <span class="tag">backup automatico</span>
+          <span class="tag">per produzione</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector" style="--line-color:#00B4D8; --delay:1.2s;">
+      <div class="connector-line"></div>
+      <div class="connector-arrow"></div>
+      <div class="connector-label">invio</div>
+    </div>
+
+    <!-- 8 -->
+    <div class="node">
+      <div class="node-card"
+           style="border-color: rgba(0,180,216,.35);"
+           data-tip="Invio automatico via Gmail / Outlook. Email personalizzata con nome collaboratore, contratto in allegato, istruzioni firma. Integrazione Make.com / Zapier."
+           data-title="Invio ai Collaboratori">
+        <div class="accent" style="background:#00B4D8;"></div>
+        <div class="node-inner">
+          <div class="node-icon" style="background:rgba(0,180,216,.15);">✉️</div>
+          <div class="node-body">
+            <div class="node-step">Step 08</div>
+            <div class="node-title">Invio ai Collaboratori</div>
+            <div class="node-desc">Email automatica personalizzata · allegato contratto · firma digitale tracciata</div>
+          </div>
+          <div class="node-badge" style="background:rgba(0,180,216,.12);color:#00B4D8;border:1px solid rgba(0,180,216,.3);">EMAIL</div>
+        </div>
+        <div class="node-tags">
+          <span class="tag">Gmail / Outlook</span>
+          <span class="tag">Make.com</span>
+          <span class="tag">email personalizzata</span>
+          <span class="tag">DocuSign</span>
+          <span class="tag">firma tracciata</span>
+          <span class="tag">reminder automatici</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /flow -->
+</div><!-- /canvas -->
+
+<!-- HINT -->
+<div class="hint">💡 Clicca su ogni nodo per vedere i dettagli</div>
+
+<!-- TOOLTIP -->
+<div class="tooltip" id="tooltip">
+  <strong id="tip-title"></strong>
+  <span id="tip-body"></span>
+</div>
+
+<script>
+  // Toggle node details on click
+  document.querySelectorAll('.node-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const wasOpen = card.classList.contains('open');
+      document.querySelectorAll('.node-card.open').forEach(c => c.classList.remove('open'));
+      if (!wasOpen) card.classList.add('open');
+    });
+  });
+
+  // Tooltip on hover
+  const tooltip = document.getElementById('tooltip');
+  const tipTitle = document.getElementById('tip-title');
+  const tipBody  = document.getElementById('tip-body');
+
+  document.querySelectorAll('.node-card').forEach(card => {
+    card.addEventListener('mouseenter', e => {
+      tipTitle.textContent = card.dataset.title || '';
+      tipBody.textContent  = card.dataset.tip   || '';
+      tooltip.classList.add('show');
+      positionTooltip(e);
+    });
+    card.addEventListener('mousemove', positionTooltip);
+    card.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+  });
+
+  function positionTooltip(e) {
+    const x = e.clientX + 14;
+    const y = e.clientY - 10;
+    const tw = tooltip.offsetWidth;
+    const th = tooltip.offsetHeight;
+    tooltip.style.left = (x + tw > window.innerWidth ? x - tw - 28 : x) + 'px';
+    tooltip.style.top  = (y + th > window.innerHeight ? y - th : y) + 'px';
+  }
+</script>
+</body>
+</html>
